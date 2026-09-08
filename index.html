@@ -429,6 +429,22 @@ const positions=[[8,45],[23,42],[38,45],[50,42],[68,45],[83,42],[94,48],[8,60],[
 const colors=["#9c4a42","#496fa8","#4f8c57","#8a5ca8","#bd7b39","#438e98"];
 
 function esc(x){return String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+new MutationObserver(()=>{
+ const active=document.activeElement;
+ if(active && modal.contains(active)) return;
+ const focusable=modal.querySelector('button, a[href], input:not([type=hidden])');
+ if(focusable) setTimeout(()=>focusable.focus(),50);
+}).observe(modal,{childList:true});
+modal.addEventListener('keydown',e=>{
+ if(e.key!=='Enter') return;
+ const t=e.target;
+ if(t.classList.contains('bubble-input')){ e.preventDefault(); bubbleNext(); return; }
+ if(t.classList.contains('prevEventSociety') || t.classList.contains('prevEventName')){
+  e.preventDefault();
+  const submitBtn=modal.querySelector('.btn');
+  if(submitBtn) submitBtn.click();
+ }
+});
 const BUBBLE_STEP_KEYS=["fullName","email","phone","school","studentStatus","gender"];
 const PREV_EVENT_OPTIONS=["PsiFi","LUMS Science Symposium (LSS)","LUMUN","YLES","LUMS Sports Fest (LSF)","LUMS Annual Photography Summit (LAPS)","LUMS Music Festival (LMF)","LUMS Religious Festival (LRF)","None"];
 let bubbleStep=0;
@@ -506,7 +522,7 @@ function showBubbleStep(i){
  const back=document.getElementById("bubbleBack"); if(back) back.disabled = (i===0);
  const next=document.getElementById("bubbleNext"); if(next) next.textContent = (i===BUBBLE_STEP_KEYS.length-1) ? "ENTER CAMPUS →" : "NEXT →";
  const bErr=document.getElementById("bubbleErr"); if(bErr) bErr.textContent="";
- const activeEl=document.querySelector(`.convo-step[data-step="${i}"] input:not([type=hidden])`);
+ const activeEl=document.querySelector(`.convo-step[data-step="${i}"] input:not([type=hidden])`) || document.querySelector(`.convo-step[data-step="${i}"] .chip-bubble.selected`) || document.querySelector(`.convo-step[data-step="${i}"] .chip-bubble`);
  if(activeEl) setTimeout(()=>activeEl.focus(),50);
 }
 function bubbleBack(){ if(bubbleStep>0) showBubbleStep(bubbleStep-1); }
