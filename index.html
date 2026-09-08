@@ -779,8 +779,10 @@ function openPrefPanel(){
  <p class="desc">Choose up to two departments. The first one you select becomes <b>First Preference</b>; the second becomes <b>Second Preference</b>.</p>
  <div>${selected.map((d,i)=>`<span class="pref"><b>${i===0?"FIRST":"SECOND"} PREFERENCE</b> · ${esc(d)} <button onclick="removePref(${i})">×</button></span>`).join("")||'<span class="desc">No preferences selected yet.</span>'}</div>
  <p class="desc">${selected.length<2?"Return to the campus and click another station to select it.":"Both preferences selected. You can now start the department applications."}</p>
+ <div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:8px">
+ <button class="btn" ${selected.length===2?'':'data-primary'} style="background:#152943;color:#fff" onclick="modal.style.display='none'">RETURN TO CAMPUS</button>
  ${selected.length===2?'<button class="btn" data-primary onclick="beginApplications()">CONTINUE TO APPLICATIONS →</button>':''}
- <button class="btn" ${selected.length===2?'':'data-primary'} style="background:#152943;color:#fff" onclick="modal.style.display='none'">RETURN TO CAMPUS</button></div>`;
+ </div></div>`;
 }
 function beginApplications(){
  modal.style.display="none"; startDepartment(0);
