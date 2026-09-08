@@ -79,9 +79,8 @@ bottom:55px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#0
 .overlay::before{background:#2f5690;top:-12%;left:-10%}
 .overlay::after{background:#152c54;bottom:-14%;right:-8%;animation-delay:-7s}
 @keyframes auroraDrift{from{transform:translate(0,0) scale(1)}to{transform:translate(4%,3%) scale(1.08)}}
-.panel{position:relative;z-index:1}
 @keyframes overlayFade{from{background:#060c1800;backdrop-filter:blur(0);-webkit-backdrop-filter:blur(0)}to{background:#060c18b3;backdrop-filter:blur(9px) saturate(1.15);-webkit-backdrop-filter:blur(9px) saturate(1.15)}}
-.panel{position:relative;width:min(760px,94vw);max-height:90vh;overflow:auto;background:radial-gradient(120% 90% at 15% -10%,#16294a 0%,#0a1526 46%,#060c18 100%);border:1px solid #24406b55;border-radius:23px;padding:29px;box-shadow:0 35px 110px #000d,0 0 90px -25px #4a75c470,inset 0 1px 0 #ffffff08;opacity:0;transform:translateY(22px) scale(.97);animation:panelPop .5s cubic-bezier(.2,.7,.2,1) forwards .08s}
+.panel{position:relative;z-index:1;width:min(760px,94vw);max-height:90vh;overflow:auto;background:radial-gradient(120% 90% at 15% -10%,#16294a 0%,#0a1526 46%,#060c18 100%);border:1px solid #24406b55;border-radius:23px;padding:29px;box-shadow:0 35px 110px #000d,0 0 90px -25px #4a75c470,inset 0 1px 0 #ffffff08;opacity:0;transform:translateY(22px) scale(.97);animation:panelPop .5s cubic-bezier(.2,.7,.2,1) forwards .08s}
 @keyframes panelPop{to{opacity:1;transform:translateY(0) scale(1)}}
 .panel::before{content:"";position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#152c54,#4a75c4 50%,#152c54);background-size:220% 100%;border-radius:23px 23px 0 0;animation:barShimmer 5s linear infinite;z-index:2}
 @keyframes barShimmer{from{background-position:0% 0}to{background-position:220% 0}}
@@ -234,7 +233,6 @@ bottom:55px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#0
   padding:9px 14px;border-radius:12px;font-size:12px;font-weight:700;
   pointer-events:none;opacity:.95
 }
-.question-timer{font-weight:900;font-size:12px;padding:7px 10px;border-radius:999px;background:linear-gradient(135deg,#1c355e,#0f1c33);border:1px solid #4a75c440;color:#fff;letter-spacing:.4px;min-width:78px;text-align:center;box-shadow:inset 0 1px 0 #ffffff15,0 2px 8px #0006}.question-timer.urgent{background:linear-gradient(135deg,#c9382e,#7d1f19);border-color:#ff8a8a55;animation:timerPulse .6s infinite alternate}@keyframes timerPulse{from{transform:scale(1)}to{transform:scale(1.05)}}
 </style>
 
 <style>
@@ -245,7 +243,6 @@ bottom:55px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#0
   .station { transform: translate(-50%,-50%) scale(.86); }
   .station:hover { transform: translate(-50%,-50%) scale(.92); }
 }
-.question-timer{font-weight:900;font-size:12px;padding:7px 10px;border-radius:999px;background:linear-gradient(135deg,#1c355e,#0f1c33);border:1px solid #4a75c440;color:#fff;letter-spacing:.4px;min-width:78px;text-align:center;box-shadow:inset 0 1px 0 #ffffff15,0 2px 8px #0006}.question-timer.urgent{background:linear-gradient(135deg,#c9382e,#7d1f19);border-color:#ff8a8a55;animation:timerPulse .6s infinite alternate}@keyframes timerPulse{from{transform:scale(1)}to{transform:scale(1.05)}}
 </style>
 
 <style>
@@ -264,7 +261,6 @@ bottom:55px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#0
  .hint{bottom:auto!important;top:170px!important;left:50%!important;right:auto!important;transform:translateX(-50%)!important;max-width:250px!important;white-space:normal!important;text-align:center!important;padding:6px 9px!important;font-size:8px!important}
 }
 @media (min-width:701px) and (pointer:fine){.mobile-joystick{display:none!important}}
-.question-timer{font-weight:900;font-size:12px;padding:7px 10px;border-radius:999px;background:linear-gradient(135deg,#1c355e,#0f1c33);border:1px solid #4a75c440;color:#fff;letter-spacing:.4px;min-width:78px;text-align:center;box-shadow:inset 0 1px 0 #ffffff15,0 2px 8px #0006}.question-timer.urgent{background:linear-gradient(135deg,#c9382e,#7d1f19);border-color:#ff8a8a55;animation:timerPulse .6s infinite alternate}@keyframes timerPulse{from{transform:scale(1)}to{transform:scale(1.05)}}
 </style>
 
 <style>
