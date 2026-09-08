@@ -1012,18 +1012,19 @@ function togglePrevEventChip(btnEl){
  if(otherFields) otherFields.style.display=(othersBtn&&othersBtn.classList.contains('selected'))?"block":"none";
  document.getElementById('finalErr').textContent="";
 }
-function submitFinalApplication(){
+async function submitFinalApplication(){
  const err=document.getElementById('finalErr');
  const selected=[...document.querySelectorAll('.prev-event-chip.selected')].map(b=>b.dataset.value);
- if(selected.length===0){err.textContent='Please select at least one option (choose Others if none of these apply).';return}
+ if(window._spadesSubmissionInFlight)return; window._spadesSubmissionInFlight=true;
+ if(selected.length===0){window._spadesSubmissionInFlight=false;err.textContent='Please select at least one option (choose Others if none of these apply).';return}
  let othersEntries=[];
  if(selected.includes("Others")){
   othersEntries=[...document.querySelectorAll('.prev-other-entry')].map(row=>({
    society: row.querySelector('.prevEventSociety').value.trim(),
    event: row.querySelector('.prevEventName').value.trim()
   })).filter(e=>e.society||e.event);
-  if(othersEntries.length===0){err.textContent='Please fill in the Society Name and Event Name for Others.';return}
-  if(othersEntries.some(e=>!e.society||!e.event)){err.textContent='Please fill in both Society Name and Event Name for each Others entry.';return}
+  if(othersEntries.length===0){window._spadesSubmissionInFlight=false;err.textContent='Please fill in the Society Name and Event Name for Others.';return}
+  if(othersEntries.some(e=>!e.society||!e.event)){window._spadesSubmissionInFlight=false;err.textContent='Please fill in both Society Name and Event Name for each Others entry.';return}
  }
  applicant.previousEventsSelected=selected;
  applicant.previousEventsOtherEntries=othersEntries;
@@ -1033,8 +1034,17 @@ function submitFinalApplication(){
  if(typeof spadesTerminalEnd==="function") spadesTerminalEnd();
  applicant.completedAt=new Date().toISOString();
  localStorage.setItem("spadesApplicant",JSON.stringify(applicant));
- if(typeof syncSpadesToSheets==="function") syncSpadesToSheets(applicant);
- renderSubmittedScreen();
+ err.textContent="Submitting application…";
+ try {
+  const result=await syncSpadesToSheets(applicant);
+  if(!result || !result.success) throw new Error((result&&result.error)||"The application could not be saved.");
+  applicant.candidateId=result.candidateId||applicant.candidateId;
+  localStorage.setItem("spadesApplicant",JSON.stringify(applicant));
+  renderSubmittedScreen();
+ } catch(e) {
+  window._spadesSubmissionInFlight=false;
+  err.textContent="Submission failed: "+(e&&e.message?e.message:"Please try again.");
+ }
 }
 function renderSubmittedScreen(){
  const first=esc((applicant.preferences||[])[0]||"First Preference");
@@ -1221,15 +1231,71 @@ function closeApplicationTerminal(){
 })();
 </script>
 <div id="walkHint">WASD to walk • Get close to a station, then press ENTER or tap WALK IN</div><script>
-window.syncSpadesToSheets=async function(a){
- try{
+window.syncSpadesToSheets=function(a){
+ return new Promise(function(resolve,reject){
   const totals={};(a.responses||[]).forEach(r=>totals[r.preference]=(totals[r.preference]||0)+Number(r.score||0));
-  await fetch("https://script.google.com/macros/s/AKfycbzSwBsXmtNijhagthmkFR5SlEHOy3p_qkvNz-CNPEeSuJ7Z5UeVMMBLA_b-WdM2Y0hqsQ/exec",{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({candidateId:a.candidateId,fullName:a.fullName,lumsEmail:a.lumsEmail,phone:a.phone,school:a.school||"",studentStatus:a.studentStatus||"",gender:a.gender||"",previousEvents:a.previousEvents||"",startedAt:a.startedAt,completedAt:a.completedAt||new Date().toISOString(),firstPreference:(a.preferences||[])[0]||"",secondPreference:(a.preferences||[])[1]||"",standardScore:totals["Standard Questions"]||0,
-        firstPreferenceScore:totals["First Preference"]||0,
-        secondPreferenceScore:totals["Second Preference"]||0,
-        totalScore:(totals["Standard Questions"]||0)+(totals["First Preference"]||0)+(totals["Second Preference"]||0),
-        maxScore:120+((a.preferences||[]).length)*160,responses:a.responses||[]}),keepalive:true});
- }catch(e){console.error("Sheets sync failed",e);}
+  const payload={candidateId:a.candidateId,fullName:a.fullName,lumsEmail:a.lumsEmail,phone:a.phone,school:a.school||"",studentStatus:a.studentStatus||"",gender:a.gender||"",previousEvents:a.previousEvents||"",startedAt:a.startedAt,completedAt:a.completedAt||new Date().toISOString(),firstPreference:(a.preferences||[])[0]||"",secondPreference:(a.preferences||[])[1]||"",
+   standardScore:totals["Standard Questions"]||0,
+   firstPreferenceScore:totals["First Preference"]||0,
+   secondPreferenceScore:totals["Second Preference"]||0,
+   totalScore:(totals["Standard Questions"]||0)+(totals["First Preference"]||0)+(totals["Second Preference"]||0),
+   maxScore:120+((a.preferences||[]).length)*160,responses:a.responses||[]};
+
+  const SCRIPT_URL="https://script.google.com/macros/s/AKfycbzSwBsXmtNijhagthmkFR5SlEHOy3p_qkvNz-CNPEeSuJ7Z5UeVMMBLA_b-WdM2Y0hqsQ/exec";
+  var frameId="spadesSubmitFrame", formId="spadesSubmitForm";
+  var frame=document.getElementById(frameId);
+  if(!frame){
+   frame=document.createElement("iframe");
+   frame.id=frameId; frame.name=frameId;
+   frame.style.position="absolute"; frame.style.width="1px"; frame.style.height="1px";
+   frame.style.opacity="0"; frame.style.border="0"; frame.style.pointerEvents="none";
+   document.body.appendChild(frame);
+  }
+  var form=document.getElementById(formId);
+  if(!form){
+   form=document.createElement("form");
+   form.id=formId; form.method="POST"; form.target=frameId;
+   form.action=SCRIPT_URL;
+   form.style.display="none";
+   document.body.appendChild(form);
+  }
+  form.innerHTML="";
+  var input=document.createElement("input");
+  input.type="hidden"; input.name="payload"; input.value=JSON.stringify(payload);
+  form.appendChild(input);
+
+  // Wait for the backend's postMessage confirmation, but fall back to
+  // polling its public status endpoint in case the postMessage never
+  // arrives (some browsers drop it even though the row was saved).
+  var settled=false, pollTimer=null, giveUpTimer=null;
+  function done(fn,arg){
+   if(settled) return;
+   settled=true;
+   clearTimeout(giveUpTimer); clearTimeout(pollTimer);
+   window.removeEventListener("message",onMessage);
+   fn(arg);
+  }
+  function onMessage(ev){
+   const d=ev && ev.data;
+   if(!d || d.type!=="SPADES_SUBMISSION_RESULT") return;
+   if(d.success) done(resolve,d);
+   else done(reject,new Error(d.error||"Application was rejected by the server."));
+  }
+  window.addEventListener("message",onMessage);
+  function poll(){
+   if(settled) return;
+   const url=SCRIPT_URL+"?candidateId="+encodeURIComponent(a.candidateId)+"&email="+encodeURIComponent(a.lumsEmail);
+   fetch(url).then(r=>r.json()).then(d=>{
+    if(settled) return;
+    if(d && d.found) done(resolve,{success:true,candidateId:(d.data&&d.data.candidateId)||a.candidateId,message:"Application submitted successfully"});
+    else pollTimer=setTimeout(poll,2000);
+   }).catch(()=>{ if(!settled) pollTimer=setTimeout(poll,2000); });
+  }
+  pollTimer=setTimeout(poll,3000);
+  giveUpTimer=setTimeout(()=>{ done(reject,new Error("Server did not confirm the submission. Please try again.")); },60000);
+
+  form.submit();
+ });
 };
 </script>
 <script>
