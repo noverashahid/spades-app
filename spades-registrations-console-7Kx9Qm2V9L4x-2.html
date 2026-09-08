@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';">
+<title>SPADES — Registrations Console</title>
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100vh;font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;background:#0a160e;color:#f3f8f1}
+body{padding:24px}
+.center{display:flex;align-items:center;justify-content:center;min-height:90vh}
+.login-panel{width:min(400px,94vw);background:#102017;border:1px solid #ffffff26;border-radius:23px;padding:32px 28px}
+.kicker{font-size:10px;color:#b9ec91;font-weight:1000;letter-spacing:.17em}
+.title{font-size:26px;font-weight:1000;margin:8px 0 6px}
+.desc{color:#cbd9cc;line-height:1.5;font-size:13px;margin-bottom:18px}
+.field{display:block;color:#bfd0c1;font-size:11px;font-weight:900;margin:14px 0}
+.field input,.field select{width:100%;margin-top:6px;padding:12px;border:1px solid #ffffff20;border-radius:10px;background:#182e1f;color:#fff;outline:none;font-size:14px}
+.btn{border:0;border-radius:11px;padding:12px 18px;background:#b9ec91;color:#102017;font-weight:1000;cursor:pointer;margin-top:14px;width:100%;font-size:14px}
+.btn.small{width:auto;padding:8px 14px;font-size:12px;margin-top:0}
+.btn:disabled{opacity:.6;cursor:default}
+.error{color:#ffb6ae;font-size:12px;margin-top:10px}
+#adminApp{display:none;max-width:1100px;margin:0 auto}
+#adminApp.show{display:block}
+.topbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-bottom:22px}
+.count{color:#9eb3a2;font-size:12px}
+table{width:100%;border-collapse:collapse;background:#102017;border-radius:16px;overflow:hidden}
+th,td{text-align:left;padding:12px 14px;font-size:13px;border-bottom:1px solid #ffffff10}
+th{background:#0d1a12;color:#9eb3a2;font-size:11px;text-transform:uppercase;letter-spacing:.06em;font-weight:900}
+tr:last-child td{border-bottom:none}
+.badge{display:inline-block;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:900}
+.b-submitted{background:#1a3221;color:#cfe8d0}
+.b-review{background:#3a3416;color:#f0dc8e}
+.b-interview{background:#173c4a;color:#8fd3ec}
+.b-selected{background:#173c25;color:#b9ec91}
+.b-rejected{background:#3a1a18;color:#e0776b}
+.status-select{background:#182e1f;color:#fff;border:1px solid #ffffff20;border-radius:8px;padding:6px 8px;font-size:12px}
+.muted{color:#8fa393;font-size:12px}
+.refresh-row{display:flex;justify-content:flex-end;margin-bottom:10px}
+.toast{position:fixed;bottom:20px;right:20px;background:#173c25;border:1px solid #b9ec9155;color:#b9ec91;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:800;opacity:0;transform:translateY(8px);transition:.2s}
+.toast.error{background:#3a1a18;border:1px solid #e0776b55;color:#e0776b}
+.toast.show{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<div class="center" id="loginScreen">
+  <div class="login-panel">
+    <div class="kicker">SPADES · 2026</div>
+    <div class="title">Admin Login</div>
+    <div class="desc">Enter the admin password to manage application statuses.</div>
+    <label class="field">PASSWORD
+      <input id="pw" type="password" placeholder="••••••••">
+    </label>
+    <button class="btn" id="loginBtn">LOG IN</button>
+    <div class="error" id="loginErr"></div>
+  </div>
+</div>
+
+<div id="adminApp">
+  <div class="topbar">
+    <div>
+      <div class="kicker">SPADES · 2026</div>
+      <div class="title" style="margin:6px 0 0">Applications</div>
+    </div>
+    <div class="count" id="countLabel"></div>
+  </div>
+  <div class="refresh-row"><button class="btn small" id="refreshBtn">REFRESH</button><button class="btn small" id="logoutBtn" style="margin-left:8px">LOG OUT</button></div>
+  <div id="tableWrap"><p class="muted">Loading applicants…</p></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzSwBsXmtNijhagthmkFR5SlEHOy3p_qkvNz-CNPEeSuJ7Z5UeVMMBLA_b-WdM2Y0hqsQ/exec";
+// Admin authentication is handled by a short-lived server-issued token.
+
+const STATUSES = ["Submitted", "Under Review", "Interview", "Selected", "Not Selected"];
+const BADGE_CLASS = {
+  "Submitted": "b-submitted",
+  "Under Review": "b-review",
+  "Interview": "b-interview",
+  "Selected": "b-selected",
+  "Not Selected": "b-rejected"
+};
+
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+function showToast(msg, isError){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.toggle("error", !!isError);
+  t.classList.add("show");
+  clearTimeout(t._hideTimer);
+  t._hideTimer = setTimeout(()=>t.classList.remove("show"), isError ? 5000 : 2200);
+}
+
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  const password=document.getElementById("pw").value;
+  const err=document.getElementById("loginErr");
+  err.textContent="";
+  if(!password){ err.textContent="Enter the admin password."; return; }
+  const btn=document.getElementById("loginBtn");
+  btn.disabled=true; btn.textContent="LOGGING IN...";
+  try{
+    const res=await fetch(SCRIPT_URL,{
+      method:"POST",
+      headers:{"Content-Type":"text/plain;charset=utf-8"},
+      body:JSON.stringify({action:"adminLogin",password})
+    });
+    const data=await res.json();
+    if(!data.success){ err.textContent=data.error||"Login failed."; return; }
+    sessionStorage.setItem("spadesAdminToken",data.adminToken);
+    document.getElementById("pw").value="";
+    document.getElementById("loginScreen").style.display="none";
+    document.getElementById("adminApp").classList.add("show");
+    loadApplicants();
+  }catch(e){
+    err.textContent="Could not connect to the admin service.";
+  }finally{
+    btn.disabled=false; btn.textContent="LOG IN";
+  }
+});
+document.getElementById("pw").addEventListener("keydown",e=>{
+  if(e.key==="Enter") document.getElementById("loginBtn").click();
+});
+
+function logout(){
+  sessionStorage.removeItem("spadesAdminToken");
+  document.getElementById("adminApp").classList.remove("show");
+  document.getElementById("loginScreen").style.display="flex";
+} 
+
+const existingToken=sessionStorage.getItem("spadesAdminToken");
+if(existingToken){
+  document.getElementById("loginScreen").style.display="none";
+  document.getElementById("adminApp").classList.add("show");
+  loadApplicants();
+}
+
+async function loadApplicants(){
+  const wrap = document.getElementById("tableWrap");
+  wrap.innerHTML = '<p class="muted">Loading applicants…</p>';
+  try{
+    const res = await fetch(`${SCRIPT_URL}?action=list&adminToken=${encodeURIComponent(sessionStorage.getItem("spadesAdminToken")||"")}`);
+    const data = await res.json();
+    if(data.error){ wrap.innerHTML = `<p class="error">${esc(data.error)}</p>`; return; }
+    renderTable(data.applicants || []);
+  }catch(e){
+    wrap.innerHTML = '<p class="error">Could not load applicants. Check the connection and try again.</p>';
+  }
+}
+
+function renderTable(applicants){
+  document.getElementById("countLabel").textContent = `${applicants.length} applicant${applicants.length===1?"":"s"}`;
+  const wrap = document.getElementById("tableWrap");
+  if(!applicants.length){
+    wrap.innerHTML = '<p class="muted">No applications yet.</p>';
+    return;
+  }
+  const rows = applicants.map(a => `
+    <tr data-id="${esc(a.candidateId)}">
+      <td>${esc(a.candidateId)}</td>
+      <td>${esc(a.fullName)}<div class="muted">${esc(a.lumsEmail||"")}</div></td>
+      <td>${esc(a.firstPreference||"—")}<div class="muted">${esc(a.secondPreference||"")}</div></td>
+      <td>${esc(a.totalScore ?? "—")}</td>
+      <td><span class="badge ${BADGE_CLASS[a.status]||'b-submitted'}">${esc(a.status||"Submitted")}</span></td>
+      <td>
+        <select class="status-select">
+          ${STATUSES.map(s => `<option value="${esc(s)}" ${s===a.status?"selected":""}>${esc(s)}</option>`).join("")}
+        </select>
+      </td>
+    </tr>`).join("");
+
+  wrap.innerHTML = `
+    <table>
+      <thead><tr>
+        <th>Candidate ID</th><th>Name / Email</th><th>Preferences</th><th>Score</th><th>Status</th><th>Update</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+
+  wrap.querySelectorAll(".status-select").forEach(sel => {
+    sel.addEventListener("change", async (e) => {
+      const tr = e.target.closest("tr");
+      const candidateId = tr.dataset.id;
+      const previousStatus = tr.querySelector(".badge").textContent;
+      const newStatus = e.target.value;
+      e.target.disabled = true;
+      try{
+        const res = await fetch(SCRIPT_URL, {
+          method: "POST",
+          headers: {"Content-Type":"text/plain;charset=utf-8"},
+          body: JSON.stringify({ action: "updateStatus", candidateId, status: newStatus, adminToken: sessionStorage.getItem("spadesAdminToken")||"" })
+        });
+        const data = await res.json();
+        if(data.success){
+          const badge = tr.querySelector(".badge");
+          badge.className = `badge ${BADGE_CLASS[newStatus]||'b-submitted'}`;
+          badge.textContent = newStatus;
+          showToast(`Updated ${candidateId} → ${newStatus}`);
+        } else {
+          e.target.value = previousStatus;
+          showToast(data.error || "Update failed", true);
+        }
+      }catch(err){
+        e.target.value = previousStatus;
+        showToast("Update failed — check connection", true);
+      }finally{
+        e.target.disabled = false;
+      }
+    });
+  });
+}
+
+document.getElementById("refreshBtn").addEventListener("click", loadApplicants);
+document.getElementById("logoutBtn").addEventListener("click", logout);
+</script>
+</body>
+</html>
