@@ -139,6 +139,10 @@ bottom:55px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#0
 .chip-bubble:hover{border-color:#4a75c480;color:#eef3fb;transform:translateY(-1px);box-shadow:inset 0 1px 0 #ffffff08,0 6px 14px #0006}
 .chip-bubble:active{transform:translateY(0)}
 .chip-bubble.selected{background:linear-gradient(150deg,#0e1c2e 0%,#0c1930 45%,#0a1526 100%);border-color:#4a75c4;color:#eef4ff;box-shadow:0 6px 16px #0a163266,inset 0 1px 0 #ffffff25}
+.chip-bubble.gender-chip-male{border-color:#4b6cff66}
+.chip-bubble.gender-chip-female{border-color:#d85a9b66}
+.chip-bubble.gender-chip-male.selected{background:linear-gradient(150deg,#1c3a78 0%,#16294a 45%,#0e1c33 100%);border-color:#4b6cff;color:#eef4ff;box-shadow:0 6px 16px #0a163266,inset 0 1px 0 #ffffff25}
+.chip-bubble.gender-chip-female.selected{background:linear-gradient(150deg,#7a2a52 0%,#4a1c36 45%,#2c0f21 100%);border-color:#d85a9b;color:#eef4ff;box-shadow:0 6px 16px #0a163266,inset 0 1px 0 #ffffff25}
 .bubble-nav{display:flex;gap:10px;margin-top:20px}
 .bubble-back{border:1px solid #24406b;background:transparent;color:#8ba1c9;border-radius:11px;padding:0 20px;font-weight:900;font-family:inherit;font-size:12px;letter-spacing:.03em;cursor:pointer;transition:.15s}
 .bubble-back:hover{border-color:#4a75c480;color:#eef3fb}
@@ -188,6 +192,7 @@ bottom:55px;left:50%;transform:translateX(-50%);white-space:nowrap;background:#0
 .player.gender-female .hair{height:17px;top:-2px;border-radius:14px 14px 9px 9px;box-shadow:0 5px 0 #2b1d16, -3px 8px 0 #2b1d16, 3px 8px 0 #2b1d16}
 .player.gender-female .body{background:#d85a9b}
 .player.gender-female .head:after{content:'•  •';position:absolute;left:5px;top:11px;font-size:7px;color:#8b3f5f;letter-spacing:3px}
+.player.gender-other .body{background:#f5952a}
 
 
 /* Station interaction state: approach a station, then use the small SELECT bubble. */
@@ -471,8 +476,8 @@ function showInfo(){
  <div class="convo-step" data-step="5" style="display:none">
   <div class="bot-bubble">Last one — what's your gender?</div>
   <div class="chip-row">
-   <button type="button" class="chip-bubble" onclick="selectChip('gender','Male',this,true)">Male</button>
-   <button type="button" class="chip-bubble" onclick="selectChip('gender','Female',this,true)">Female</button>
+   <button type="button" class="chip-bubble gender-chip-male" onclick="selectChip('gender','Male',this,true)">Male</button>
+   <button type="button" class="chip-bubble gender-chip-female" onclick="selectChip('gender','Female',this,true)">Female</button>
    <button type="button" class="chip-bubble" onclick="selectChip('gender','Prefer not to say',this,true)">Prefer not to say</button>
   </div>
   <input type="hidden" id="gender">
@@ -525,7 +530,9 @@ function selectChip(fieldId,value,btnEl,isGender){
 }
 function previewGender(g){
  const p=document.getElementById('player');
- if(p) p.classList.toggle('gender-female',g==='Female');
+ if(!p) return;
+ p.classList.toggle('gender-female',g==='Female');
+ p.classList.toggle('gender-other',g!=='Male'&&g!=='Female');
 }
 function showReadyScreen(){
  modal.style.display="flex";
