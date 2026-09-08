@@ -500,15 +500,15 @@ function showInfo(){
 
  <div class="convo-step" data-step="0">
   <div class="bot-bubble">Hi 👋 What's your full name?</div>
-  <input id="fullName" class="bubble-input" autocomplete="name" placeholder="Your full name">
+  <input id="fullName" class="bubble-input" autocomplete="name" placeholder="Your full name" oninput="saveRegDraft(bubbleStep)">
  </div>
  <div class="convo-step" data-step="1" style="display:none">
   <div class="bot-bubble">Nice to meet you. What's your LUMS email?</div>
-  <input id="email" class="bubble-input" type="email" autocomplete="email" placeholder="rollnumber@lums.edu.pk">
+  <input id="email" class="bubble-input" type="email" autocomplete="email" placeholder="rollnumber@lums.edu.pk" oninput="saveRegDraft(bubbleStep)">
  </div>
  <div class="convo-step" data-step="2" style="display:none">
   <div class="bot-bubble">And a phone number we can reach you on?</div>
-  <input id="phone" class="bubble-input" type="tel" inputmode="numeric" autocomplete="tel" placeholder="03XX XXXXXXX" maxlength="11" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+  <input id="phone" class="bubble-input" type="tel" inputmode="numeric" autocomplete="tel" placeholder="03XX XXXXXXX" maxlength="11" oninput="this.value=this.value.replace(/[^0-9]/g,'');saveRegDraft(bubbleStep)">
  </div>
  <div class="convo-step" data-step="3" style="display:none">
   <div class="bot-bubble">Which school are you in at LUMS?</div>
@@ -549,9 +549,23 @@ function showInfo(){
  <div class="glow-strip" aria-hidden="true"></div>
  <div class="mbk-mark">MBK</div></div>`;
  bubbleStep=0;
- showBubbleStep(0);
- const first=document.getElementById("fullName");
- if(first) setTimeout(()=>first.focus(),80);
+ restoreRegDraft();
+}
+function restoreRegDraft(){
+ let draft=null;
+ try{ const raw=localStorage.getItem("spadesRegDraft"); if(raw) draft=JSON.parse(raw); }catch(e){}
+ if(!draft){ showBubbleStep(0); return; }
+ ["fullName","email","phone"].forEach(k=>{ const el=document.getElementById(k); if(el) el.value=draft[k]||""; });
+ ["school","studentStatus","gender"].forEach(k=>{
+  const v=draft[k]||""; const hidden=document.getElementById(k); if(hidden) hidden.value=v;
+  if(!v) return;
+  const step=document.querySelector(`.convo-step[data-step="${BUBBLE_STEP_KEYS.indexOf(k)}"]`);
+  if(!step) return;
+  step.querySelectorAll(".chip-bubble").forEach(btn=>{ btn.classList.toggle("selected", btn.textContent.trim()===v); });
+ });
+ if(draft.gender) previewGender(draft.gender);
+ const step=Math.min(Math.max(parseInt(draft.step,10)||0,0), BUBBLE_STEP_KEYS.length-1);
+ showBubbleStep(step);
 }
 function showBubbleStep(i){
  bubbleStep=i;
@@ -567,6 +581,15 @@ function showBubbleStep(i){
  if(activeEl) setTimeout(()=>activeEl.focus(),50);
 }
 function bubbleBack(){ if(bubbleStep>0) showBubbleStep(bubbleStep-1); }
+// Persist in-progress registration answers so a reload can pick back up on the
+// same step instead of forcing the applicant to start the form over.
+function saveRegDraft(step){
+ try{
+  const draft={step:step,fullName:"",email:"",phone:"",school:"",studentStatus:"",gender:""};
+  BUBBLE_STEP_KEYS.forEach(k=>{ const el=document.getElementById(k); if(el) draft[k]=el.value; });
+  localStorage.setItem("spadesRegDraft",JSON.stringify(draft));
+ }catch(e){}
+}
 function bubbleNext(){
  const key=BUBBLE_STEP_KEYS[bubbleStep];
  const val=document.getElementById(key).value.trim();
@@ -575,6 +598,7 @@ function bubbleNext(){
  if(key==="email" && !/^[^\s@]+@lums\.edu\.pk$/i.test(val)){ bErr.textContent="Please enter a valid LUMS email ending in @lums.edu.pk."; return; }
  if(key==="phone" && (!/^[0-9]+$/.test(val) || val.length<10)){ bErr.textContent="Please enter a valid phone number (numbers only, at least 10 digits)."; return; }
  if(bubbleStep===BUBBLE_STEP_KEYS.length-1){ startApp(); return; }
+ saveRegDraft(bubbleStep+1);
  showBubbleStep(bubbleStep+1);
 }
 function selectChip(fieldId,value,btnEl,isGender){
@@ -584,6 +608,7 @@ function selectChip(fieldId,value,btnEl,isGender){
  btnEl.classList.add("selected");
  if(isGender) previewGender(value);
  document.getElementById("bubbleErr").textContent="";
+ saveRegDraft(bubbleStep);
  // Move focus onto NEXT so ENTER continues the form instead of re-selecting
  // the chip the applicant just chose.
  const next=document.getElementById("bubbleNext");
@@ -612,6 +637,7 @@ function startApp(){
  previewGender(gender);
  applicant={candidateId:"SP-26-"+Math.random().toString(36).slice(2,8).toUpperCase(),fullName:n,lumsEmail:e,phone:p,school,studentStatus,gender,startedAt:new Date().toISOString(),preferences:[],responses:[],applicationSets:{},standardCompleted:false,previousEvents:""};
  localStorage.setItem("spadesApplicant",JSON.stringify(applicant));
+ localStorage.removeItem("spadesRegDraft");
  showReadyScreen();
 }
 
@@ -625,25 +651,41 @@ function randomizeOptions(options){
  window._displayedOptions=a;
  return a;
 }
+const QUESTION_SECONDS=90;
 let questionTimer=null, questionTimeLeft=90, questionTimerToken=0;
 function stopQuestionTimer(){ if(questionTimer){clearInterval(questionTimer);questionTimer=null;} }
-function startQuestionTimer(onExpire){
- stopQuestionTimer(); const token=++questionTimerToken; questionTimeLeft=90;
+function startQuestionTimer(onExpire,seconds){
+ stopQuestionTimer(); const token=++questionTimerToken; questionTimeLeft=(typeof seconds==="number")?seconds:QUESTION_SECONDS;
  const el=document.getElementById("questionTimer");
  function paint(){ if(!el)return; el.textContent=`TIME ${String(Math.floor(questionTimeLeft/60)).padStart(2,"0")}:${String(questionTimeLeft%60).padStart(2,"0")}`; el.classList.toggle("urgent",questionTimeLeft<=10); }
- paint(); questionTimer=setInterval(()=>{ if(token!==questionTimerToken){stopQuestionTimer();return;} questionTimeLeft--; paint(); if(questionTimeLeft<=0){stopQuestionTimer(); onExpire();}},1000);
+ paint();
+ if(questionTimeLeft<=0){ setTimeout(()=>{ if(token===questionTimerToken){stopQuestionTimer();onExpire();} },0); return; }
+ questionTimer=setInterval(()=>{ if(token!==questionTimerToken){stopQuestionTimer();return;} questionTimeLeft--; paint(); if(questionTimeLeft<=0){stopQuestionTimer(); onExpire();}},1000);
+}
+// How many seconds are left on the current question if we're resuming after a
+// reload, based on when the question was first shown. null means "not a resume".
+function resumeSecondsRemaining(){
+ if(!applicant || !applicant.currentQuestionStartedAt) return null;
+ const elapsed=Math.floor((Date.now()-new Date(applicant.currentQuestionStartedAt).getTime())/1000);
+ return Math.max(0,QUESTION_SECONDS-elapsed);
+}
+function markQuestionStarted(){
+ if(!applicant) return;
+ applicant.currentQuestionStartedAt=new Date().toISOString();
+ localStorage.setItem("spadesApplicant",JSON.stringify(applicant));
 }
 function showStandardQuestions(){
  qIndex=0; currentQuestions=STANDARD_QUESTIONS.slice(); currentSources=currentQuestions.map(()=> "standard");
  modal.style.display="flex"; renderStandardQuestion();
 }
-function renderStandardQuestion(){
+function renderStandardQuestion(resumeSeconds){
  const q=currentQuestions[qIndex], progress=Math.round(qIndex/currentQuestions.length*100);
  modal.innerHTML=`<div class="panel"><div class="topline"><div><div class="kicker">WELCOME · STANDARD QUESTIONS</div><div class="title" style="font-size:27px">A few questions before you enter</div></div><div style="display:flex;gap:8px;align-items:center"><div class="counter">${qIndex+1} / ${currentQuestions.length}</div><div id="questionTimer" class="question-timer">TIME 01:30</div></div></div>
  <div class="bar"><div class="fill" style="width:${progress}%"></div></div>
  <div class="question" style="font-size:18px;font-weight:900;line-height:1.5">${esc(q.question)}</div>
  ${randomizeOptions(q.options).map((o,i)=>`<button class="choice" onclick="answerStandard(${i})"><b>${String.fromCharCode(65+i)}.</b> ${esc(o.text)}</button>`).join("")}</div>`;
- startQuestionTimer(()=>answerStandard(-1));
+ if(typeof resumeSeconds==="number"){ startQuestionTimer(()=>answerStandard(-1),resumeSeconds); }
+ else { markQuestionStarted(); startQuestionTimer(()=>answerStandard(-1)); }
 }
 function answerStandard(optIndex){
  if(!window._displayedOptions || (optIndex>=0 && optIndex>=window._displayedOptions.length)) return;
@@ -817,7 +859,52 @@ function startDepartment(index){
  hudStatus.textContent=(index===0?"First Preference":"Second Preference")+": "+currentDept.name;
  renderQuestion(index);
 }
-function renderQuestion(prefIndex){
+// Reconstruct exactly where this applicant left off from what's already been
+// persisted (registration answers, standard-question responses, chosen
+// preferences, per-department question sets, previous-events draft) so a
+// reload/refresh continues instead of restarting the whole application.
+function resumeApplication(){
+ modal.style.display="flex";
+ if(applicant.completedAt){ renderSubmittedScreen(); return; }
+ if(!applicant.standardCompleted){
+  qIndex=allResponses.filter(r=>r.department==="Standard Questions").length;
+  currentQuestions=STANDARD_QUESTIONS.slice(); currentSources=currentQuestions.map(()=>"standard");
+  if(qIndex>=currentQuestions.length){
+   applicant.standardCompleted=true; localStorage.setItem("spadesApplicant",JSON.stringify(applicant));
+  } else {
+   renderStandardQuestion(resumeSecondsRemaining());
+   return;
+  }
+ }
+ if(selected.length<2){
+  modal.style.display="none";
+  hudStatus.textContent="Choose two department preferences";
+  hint.textContent=HINT_DEFAULT;
+  return;
+ }
+ for(let idx=0; idx<2; idx++){
+  const deptName=selected[idx], dept=DATA.find(d=>d.name===deptName);
+  if(!dept || !dept.questions.length) continue;
+  const set=applicant.applicationSets&&applicant.applicationSets[deptName];
+  const preferenceLabel=idx===0?"First Preference":"Second Preference";
+  const answeredCount=allResponses.filter(r=>r.preference===preferenceLabel).length;
+  if(set && answeredCount>=set.length) continue;
+  currentPrefIndex=idx; currentDept=dept; qIndex=answeredCount;
+  responses=allResponses.filter(r=>r.preference===preferenceLabel);
+  const builtSet=buildApplicationQuestions(dept);
+  currentSources=[]; currentQuestions=[];
+  builtSet.forEach(item=>{
+   currentSources.push(item.source);
+   currentQuestions.push(item.source==="standard"?STANDARD_QUESTIONS[item.index]:dept.questions[item.index]);
+  });
+  hudStatus.textContent=preferenceLabel+": "+dept.name;
+  if(qIndex>=currentQuestions.length) continue;
+  renderQuestion(idx,resumeSecondsRemaining());
+  return;
+ }
+ finish();
+}
+function renderQuestion(prefIndex,resumeSeconds){
  const q=currentQuestions[qIndex], source=currentSources[qIndex];
  modal.style.display="flex";
  const sourceLabel=source==="standard"?"STANDARD QUESTIONS":"DEPARTMENT QUESTIONS";
@@ -829,7 +916,8 @@ function renderQuestion(prefIndex){
  <div style="display:inline-flex;gap:8px;align-items:center;margin:8px 0 12px"><span class="pref" style="margin:0;font-size:10px">${sourceLabel}</span>${source==="department"?`<span class="desc" style="font-size:11px;margin:0">4 questions selected from this department's pool</span>`:`<span class="desc" style="font-size:11px;margin:0">These questions appear in every department application</span>`}</div>
  <div class="question" style="font-size:18px;font-weight:900;line-height:1.5">${esc(q.question)}</div>
  ${randomizeOptions(q.options).map((o,i)=>`<button class="choice" onclick="answer(${prefIndex},${i})"><b>${String.fromCharCode(65+i)}.</b> ${esc(o.text)}</button>`).join("")}</div>`;
- startQuestionTimer(()=>answer(prefIndex,-1));
+ if(typeof resumeSeconds==="number"){ startQuestionTimer(()=>answer(prefIndex,-1),resumeSeconds); }
+ else { markQuestionStarted(); startQuestionTimer(()=>answer(prefIndex,-1)); }
 }
 function answer(prefIndex,optIndex){
  if(!window._displayedOptions || (optIndex>=0 && optIndex>=window._displayedOptions.length)) return;
@@ -931,6 +1019,9 @@ function submitFinalApplication(){
  applicant.completedAt=new Date().toISOString();
  localStorage.setItem("spadesApplicant",JSON.stringify(applicant));
  if(typeof syncSpadesToSheets==="function") syncSpadesToSheets(applicant);
+ renderSubmittedScreen();
+}
+function renderSubmittedScreen(){
  const first=esc((applicant.preferences||[])[0]||"First Preference");
  const second=esc((applicant.preferences||[])[1]||"Second Preference");
  modal.style.display="flex";
@@ -960,7 +1051,10 @@ function closeApplicationTerminal(){
  </div>`;
 }
 // Legacy movement loop removed: the unified movement engine below controls the avatar.
-showInfo();
+// Initial screen (fresh registration vs. resuming an in-progress application vs.
+// already submitted) is decided by the "load" handler below, once localStorage
+// has been read — calling showInfo() unconditionally here would flash the
+// registration form before a resume takes over.
 </script>
 
 <script>
@@ -1170,17 +1264,22 @@ window.addEventListener("load",function(){
     return;
   }
 
-  // Fresh prototype session when no application has been submitted.
-  try {
-    localStorage.removeItem("spadesApplicant");
-    localStorage.removeItem("spadesApplicationClosed");
-    sessionStorage.removeItem("spadesApplicationEnded");
-  } catch(e) {}
+  // Not yet submitted: pick up exactly where this browser left off instead of
+  // restarting the whole application from scratch.
   window.spadesApplicationEnded = false;
-  if(typeof applicant !== "undefined") applicant = null;
-  if(typeof selected !== "undefined") selected = [];
-  if(typeof modal !== "undefined" && modal) {
-    modal.style.display = "flex";
+  if(typeof modal === "undefined" || !modal) return;
+  modal.style.display = "flex";
+
+  let saved=null;
+  try { const raw=localStorage.getItem("spadesApplicant"); if(raw) saved=JSON.parse(raw); } catch(e) {}
+
+  if(saved){
+    applicant=saved;
+    selected=(saved.preferences||[]).slice();
+    allResponses=(saved.responses||[]).slice();
+    resumeApplication();
+  } else {
+    applicant=null; selected=[];
     showInfo();
   }
 });
