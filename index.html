@@ -375,6 +375,32 @@ body.night #fireworks-layer{display:block}
   background-size:220% 100%!important;
 }
 </style>
+<style>
+/* ===== SPADES 2026 copyright watermark ===== */
+body::before{
+  content:"SPADES® 2026 • RIGHTS RESERVED";
+  position:fixed;
+  left:50%;
+  bottom:10px;
+  transform:translateX(-50%);
+  z-index:1000;
+  pointer-events:none;
+  color:rgba(205,185,142,.34);
+  font-size:9px;
+  font-weight:800;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  white-space:nowrap;
+  text-shadow:0 1px 8px rgba(0,0,0,.25);
+}
+@media (max-width:520px){
+  body::before{
+    font-size:8px;
+    letter-spacing:.12em;
+    bottom:7px;
+  }
+}
+</style>
 </head>
 
 <body class="night">
@@ -512,7 +538,7 @@ function showInfo(){
  <div class="step-dots">${BUBBLE_STEP_KEYS.map((_,i)=>`<div class="step-dot" data-dot="${i}"></div>`).join("")}</div>
 
  <div class="convo-step" data-step="0">
-  <div class="bot-bubble">Hi 👋 What's your full name?</div>
+  <div class="bot-bubble">Hi! What's your full name?</div>
   <input id="fullName" class="bubble-input" autocomplete="name" placeholder="Your full name" oninput="saveRegDraft(bubbleStep)">
  </div>
  <div class="convo-step" data-step="1" style="display:none">
