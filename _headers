@@ -1,0 +1,33 @@
+# Cloudflare Pages response headers.
+# Put this file at the ROOT of the deployed folder (same level as index.html).
+# It has no file extension. Cloudflare reads it at build time and does not
+# publish it as a page.
+#
+# Why this file exists: `frame-ancestors` and `X-Frame-Options` are IGNORED
+# inside a <meta> tag. They only work as real HTTP headers. Without this file
+# the admin console can be embedded in an attacker's iframe (clickjacking).
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=(), usb=()
+  X-Frame-Options: DENY
+
+# Application page: needs to POST into a hidden Apps Script iframe,
+# so it must allow script.google.com as a form target and frame source.
+/index.html
+  Content-Security-Policy: default-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com https://cloudflareinsights.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com; frame-src https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com; frame-ancestors 'none'
+
+/
+  Content-Security-Policy: default-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com https://cloudflareinsights.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com; frame-src https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com; frame-ancestors 'none'
+
+# Status page: read-only fetch, no form posting, no iframes.
+/status.html
+  Content-Security-Policy: default-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com https://cloudflareinsights.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+
+# Admin console: same as status, plus keep it out of search results and
+# out of the browser's back/forward cache after logout.
+/spades-registrations-console-7Kx9Qm2V9L4x-2.html
+  Content-Security-Policy: default-src 'self'; connect-src 'self' https://script.google.com https://script.googleusercontent.com https://*.googleusercontent.com https://cloudflareinsights.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  X-Robots-Tag: noindex, nofollow, noarchive
+  Cache-Control: no-store

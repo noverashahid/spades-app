@@ -1,0 +1,16 @@
+# SPADES — spadesatlums.com
+#
+# The public pages (/, /index.html, /status.html) may be crawled freely.
+#
+# The admin console is deliberately NOT named in this file. robots.txt is
+# world-readable, so a "Disallow" line for it would publish the URL to anyone
+# who opens this file — the opposite of what we want, since the filename is
+# meant to be unlisted. It is kept out of search results by the
+# "X-Robots-Tag: noindex, nofollow, noarchive" header in _headers instead,
+# which works without advertising the path.
+#
+# Note that neither measure is access control. The real protection on the
+# console is the server-issued admin token.
+
+User-agent: *
+Allow: /
